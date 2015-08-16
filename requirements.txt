@@ -1,0 +1,12 @@
+Django==1.8.3
+python-dateutil
+Unipath
+pytz
+django-simple-history
+django_crypto_fields
+selenium
+factory_boy
+-e git+https://github.com/botswana-harvard/edc-constants@develop#egg=edc_constants
+-e git+https://github.com/botswana-harvard/edc-base@develop#egg=edc_base
+-e git+https://github.com/botswana-harvard/getresults@develop#egg=getresults
+-e git+https://github.com/botswana-harvard/getresults-identifier@develop#egg=getresults_identifier
