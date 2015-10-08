@@ -11,7 +11,7 @@ from getresults_aliquot.models import Aliquot
 from .choices import VALUE_DATATYPES, VALUE_TYPES
 
 
-class Panel(BaseUuidModel):
+class OrderPanel(BaseUuidModel):
 
     name = models.CharField(
         max_length=50,
@@ -24,11 +24,36 @@ class Panel(BaseUuidModel):
         return self.name
 
     class Meta:
-        app_label = 'getresults'
+        app_label = 'getresults_order'
+        db_table = 'getresults_orderpanel'
         ordering = ('name', )
 
 
+class Requisition(BaseUuidModel):
+
+    subject_identifier = models.CharField(max_length=25)
+
+    requisition_identifier = models.CharField(max_length=25)
+
+    requisition_datetime = models.DateTimeField(null=True)
+
+    specimen_identifier = models.CharField(
+        max_length=25,
+        help_text='if different from requisition identifier')
+
+    specimen_type = models.CharField(max_length=25)
+
+    tests = models.ManyToManyField(OrderPanel)
+
+    class Meta:
+        app_label = 'getresults_order'
+        db_table = 'getresults_requisition'
+        ordering = ('requisition_identifier', )
+
+
 class Order(BaseUuidModel):
+
+    order_panel = models.ForeignKey(OrderPanel)
 
     order_identifier = models.CharField(
         max_length=50,
@@ -36,8 +61,6 @@ class Order(BaseUuidModel):
     )
 
     order_datetime = models.DateTimeField(null=True)
-
-    panel = models.ForeignKey(Panel)
 
     aliquot = models.ForeignKey(Aliquot)
 
@@ -59,7 +82,8 @@ class Order(BaseUuidModel):
         return '{}: {}'.format(self.order_identifier, self.panel)
 
     class Meta:
-        app_label = 'getresults'
+        app_label = 'getresults_order'
+        db_table = 'getresults_order'
         ordering = ('order_identifier', )
 
 
@@ -180,12 +204,13 @@ class Utestid(BaseUuidModel):
         return ('=', value)
 
     class Meta:
-        app_label = 'getresults'
+        app_label = 'getresults_order'
+        db_table = 'getresults_utestid'
         ordering = ('name', )
 
 
-class PanelItem(BaseUuidModel):
-    """Model that represents one item in a panel.
+class OrderPanelItem(BaseUuidModel):
+    """Model that represents one item in an order panel.
 
     Has methods to format absolute values and to calculate, then format,
     calculated values. Lower and Upper limits of detection determine the
@@ -197,26 +222,34 @@ class PanelItem(BaseUuidModel):
         * if the upper limit of detection is 750000, a value of 750000 returns ('=', 750000)
           and a value of 750001 returns ('>', 750000)
     """
-    panel = models.ForeignKey(Panel)
+    order_panel = models.ForeignKey(OrderPanel)
 
     utestid = models.ForeignKey(Utestid)
 
     history = HistoricalRecords()
 
     def __str__(self):
-        return '{}: {}'.format(self.utestid.name, self.panel.name)
+        return '{}: {}'.format(self.utestid.name, self.order_panel.name)
 
     class Meta:
-        app_label = 'getresults'
-        unique_together = ('panel', 'utestid')
-        ordering = ('panel', 'utestid')
+        app_label = 'getresults_order'
+        db_table = 'getresults_orderpanelitem'
+        unique_together = (('order_panel', 'utestid'), )
+        ordering = ('order_panel', 'utestid')
 
 
-class Sender(BaseUuidModel):
+class SenderModel(BaseUuidModel):
+
+    """A class for the model or make of a sending device, e.g. FACSCalibur."""
 
     name = models.CharField(
         max_length=25,
         unique=True
+    )
+
+    make = models.CharField(
+        max_length=25,
+        null=True,
     )
 
     description = models.CharField(
@@ -230,27 +263,66 @@ class Sender(BaseUuidModel):
         return self.name
 
     class Meta:
-        app_label = 'getresults'
-        db_table = 'getresults_sender'
+        app_label = 'getresults_order'
+        db_table = 'getresults_sendermodel'
         ordering = ('name', )
 
 
-class UtestidMapping(BaseUuidModel):
+class SenderPanel(BaseUuidModel):
 
-    sender = models.ForeignKey(Sender)
+    """A class for the panel of results associated with a sending model/make."""
 
-    panel = models.ForeignKey(Panel)
+    name = models.CharField(max_length=25, unique=True)
 
-    utestid = models.ForeignKey(Utestid)
-
-    sender_utestid_name = models.CharField(
-        max_length=10)
+    sender_model = models.ForeignKey(SenderModel)
 
     history = HistoricalRecords()
 
     def __str__(self):
-        return '{}: {}'.format(self.sender.name, self.sender_utestid_name)
+        return '{}: {}'.format(self.sender_model.name, self.name)
 
     class Meta:
-        app_label = 'getresults'
-        db_table = 'getresults_utestidmapping'
+        app_label = 'getresults_order'
+        db_table = 'getresults_senderpanel'
+        ordering = ('name', )
+        unique_together = ('sender_model', 'name')
+
+
+class SenderPanelItem(BaseUuidModel):
+
+    """A class for each item in a sending device's panel linking the field name from the device to a utestid."""
+
+    sender_panel = models.ForeignKey(SenderPanel)
+
+    utestid = models.ForeignKey(Utestid)
+
+    sender_utestid = models.CharField(max_length=25)
+
+    history = HistoricalRecords()
+
+    def str(self):
+        return '{} <--> {}'.format(self.sender_panel.name, self.utestid.name)
+
+    class Meta:
+        app_label = 'getresults_order'
+        db_table = 'getresults_senderpanelitem'
+        unique_together = ('sender_panel', 'utestid')
+
+
+class Sender(BaseUuidModel):
+
+    """A class for a specific sender device identified by serial number that links to a sender panel."""
+
+    sender_model = models.ForeignKey(SenderModel)
+
+    serial_number = models.CharField(
+        max_length=25,
+        unique=True
+    )
+
+    sender_panel = models.ForeignKey(SenderPanel)
+
+    class Meta:
+        app_label = 'getresults_order'
+        db_table = 'getresults_sender'
+        ordering = ('serial_number', )
