@@ -4,6 +4,14 @@ from .models import Sender, SenderPanelItem
 from .utils import (load_sender_panels_from_csv, load_utestids_from_csv, load_order_panels_from_csv,
                     load_senders_from_csv)
 
+from getresults_order.models import BaseOrder, OrderPanel
+
+
+class DummyOrder(BaseOrder):
+
+    class Meta:
+        app_label = 'getresults_order'
+
 
 class TestGetresults(TestCase):
 
@@ -30,3 +38,16 @@ class TestGetresults(TestCase):
             '(Average) CD3+CD8+ Abs Cnt',
             'CD3/CD8/CD45/CD4 TruC CD3+CD4+ %Lymph']
         )
+
+    def test_order_creates_order_identifier(self):
+        order_panel = OrderPanel.objects.create(name='panel1')
+        order1 = DummyOrder.objects.create(
+            aliquot_identifier='12345678',
+            order_panel=order_panel)
+        self.assertFalse(order1.order_identifier == '')
+        self.assertFalse(order1.order_identifier is None)
+        order2 = DummyOrder.objects.create(
+            aliquot_identifier='12345678',
+            order_panel=order_panel)
+        self.assertTrue(order2.order_identifier)
+        self.assertNotEqual(order1.order_identifier, order2.order_identifier)

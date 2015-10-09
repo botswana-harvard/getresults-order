@@ -3,12 +3,14 @@ import ast
 from math import log10
 
 from django.db import models
+from django.utils import timezone
 
 from edc_base.model.models import BaseUuidModel, HistoricalRecords
-
+from edc_constants.constants import PENDING
 from getresults_aliquot.models import Aliquot
 
 from .choices import VALUE_DATATYPES, VALUE_TYPES
+from .order_identifier import OrderIdentifier
 
 
 class OrderPanel(BaseUuidModel):
@@ -51,35 +53,47 @@ class Requisition(BaseUuidModel):
         ordering = ('requisition_identifier', )
 
 
-class Order(BaseUuidModel):
-
-    order_panel = models.ForeignKey(OrderPanel)
+class BaseOrder(BaseUuidModel):
 
     order_identifier = models.CharField(
         max_length=50,
         unique=True,
+        editable=False,
     )
 
-    order_datetime = models.DateTimeField(null=True)
+    order_datetime = models.DateTimeField(default=timezone.now)
 
-    aliquot = models.ForeignKey(Aliquot)
+    order_panel = models.ForeignKey(OrderPanel)
 
-    specimen_identifier = models.CharField(
-        max_length=50,
-    )
+    aliquot_identifier = models.CharField(max_length=25)
 
-    action_code = models.CharField(
-        max_length=1,
-        null=True)
-
-    report_type = models.CharField(
-        max_length=1,
-        null=True)
+    status = models.CharField(
+        max_length=25, default=PENDING)
 
     history = HistoricalRecords()
 
     def __str__(self):
-        return '{}: {}'.format(self.order_identifier, self.panel)
+        return '{}: {}'.format(self.order_identifier, self.order_panel)
+
+    def save(self, *args, **kwargs):
+        order_identifier = OrderIdentifier()
+        self.order_identifier = self.order_identifier or next(order_identifier)
+        super(BaseOrder, self).save(*args, **kwargs)
+
+    class Meta:
+        abstract = True
+
+
+class Order(BaseOrder):
+
+    aliquot = models.ForeignKey(Aliquot, null=True, editable=False)
+
+    history = HistoricalRecords()
+
+    def save(self, *args, **kwargs):
+        self.order_identifier = self.order_identifier or OrderIdentifier(None)
+        self.aliquot = Aliquot.objects.get(aliquot_identifier=self.aliquot_identifier)
+        super(Order, self).save(*args, **kwargs)
 
     class Meta:
         app_label = 'getresults_order'

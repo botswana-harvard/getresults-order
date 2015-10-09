@@ -42,6 +42,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'django_crypto_fields',
     'getresults',
+    'getresults_identifier',
     'getresults_aliquot',
     'getresults_patient',
     'getresults_receive',
