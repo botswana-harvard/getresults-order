@@ -22,12 +22,6 @@ setup(
     long_description=README,
     zip_safe=False,
     keywords='django lis lims result order',
-    install_requires=[
-        'Django>=1.8',
-        'django-extensions>=1.5.5',
-        'unipath>=1.1',
-        'django-simple-history',
-    ],
     classifiers=[
         'Environment :: Web Environment',
         'Framework :: Django',

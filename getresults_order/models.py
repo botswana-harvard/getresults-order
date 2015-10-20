@@ -4,8 +4,8 @@ from math import log10
 
 from django.db import models
 from django.utils import timezone
-
-from edc_base.model.models import BaseUuidModel, HistoricalRecords
+from edc_base.audit_trail import AuditTrail
+from edc_base.model.models import BaseUuidModel
 from edc_constants.constants import PENDING
 from getresults_aliquot.models import Aliquot
 
@@ -20,7 +20,7 @@ class OrderPanel(BaseUuidModel):
         unique=True
     )
 
-    history = HistoricalRecords()
+    history = AuditTrail()
 
     def __str__(self):
         return self.name
@@ -70,14 +70,15 @@ class BaseOrder(BaseUuidModel):
     status = models.CharField(
         max_length=25, default=PENDING)
 
-    history = HistoricalRecords()
+    history = AuditTrail()
 
     def __str__(self):
         return '{}: {}'.format(self.order_identifier, self.order_panel)
 
     def save(self, *args, **kwargs):
-        order_identifier = OrderIdentifier()
-        self.order_identifier = self.order_identifier or next(order_identifier)
+        if not self.order_identifier:
+            order_identifier = OrderIdentifier()
+            self.order_identifier = next(order_identifier)
         super(BaseOrder, self).save(*args, **kwargs)
 
     class Meta:
@@ -88,11 +89,14 @@ class Order(BaseOrder):
 
     aliquot = models.ForeignKey(Aliquot, null=True, editable=False)
 
-    history = HistoricalRecords()
+    history = AuditTrail()
 
     def save(self, *args, **kwargs):
         self.order_identifier = self.order_identifier or OrderIdentifier(None)
-        self.aliquot = Aliquot.objects.get(aliquot_identifier=self.aliquot_identifier)
+        if not self.aliquot:
+            self.aliquot = Aliquot.objects.get(aliquot_identifier=self.aliquot_identifier)
+        else:
+            self.aliquot_identifier = self.aliquot.aliquot_identifier
         super(Order, self).save(*args, **kwargs)
 
     class Meta:
@@ -160,7 +164,7 @@ class Utestid(BaseUuidModel):
         null=True
     )
 
-    history = HistoricalRecords()
+    history = AuditTrail()
 
     def __str__(self):
         return self.name
@@ -240,7 +244,7 @@ class OrderPanelItem(BaseUuidModel):
 
     utestid = models.ForeignKey(Utestid)
 
-    history = HistoricalRecords()
+    history = AuditTrail()
 
     def __str__(self):
         return '{}: {}'.format(self.utestid.name, self.order_panel.name)
