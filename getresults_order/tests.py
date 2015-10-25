@@ -2,8 +2,8 @@ import math
 
 from django.test import TestCase
 
-from .models import Utestid, OrderPanelItem, BaseOrder, OrderPanel
-from .utils import load_utestids_from_csv, load_order_panels_from_csv
+from getresults_order.configure import Configure as ConfigureOrder
+from getresults_order.models import Utestid, OrderPanelItem, BaseOrder, OrderPanel
 
 
 class DummyOrder(BaseOrder):
@@ -15,8 +15,8 @@ class DummyOrder(BaseOrder):
 class TestGetresults(TestCase):
 
     def setUp(self):
-        load_utestids_from_csv()
-        load_order_panels_from_csv()
+        configure_order = ConfigureOrder()
+        configure_order.load_all()
 
     def test_order_creates_order_identifier(self):
         order_panel = OrderPanel.objects.create(name='panel1')
