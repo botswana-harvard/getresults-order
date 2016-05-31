@@ -4,7 +4,7 @@ from math import log10
 
 from django.db import models
 from django.utils import timezone
-from edc_base.audit_trail import AuditTrail
+from simple_history.models import HistoricalRecords as AuditTrail
 from edc_base.model.models import BaseUuidModel
 from edc_constants.constants import PENDING
 from getresults_aliquot.models import Aliquot
